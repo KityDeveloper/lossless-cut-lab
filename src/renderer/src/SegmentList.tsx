@@ -1,4 +1,4 @@
-import type { SetStateAction, Dispatch, MouseEventHandler, CSSProperties } from 'react';
+import type { SetStateAction, Dispatch, MouseEventHandler, KeyboardEventHandler, CSSProperties } from 'react';
 import { memo, useMemo, useRef, useCallback, useState, useEffect } from 'react';
 import { FaYinYang, FaSave, FaPlus, FaMinus, FaTag, FaSortNumericDown, FaRegCheckCircle, FaRegCircle, FaTimes } from 'react-icons/fa';
 import { AiOutlineSplitCells } from 'react-icons/ai';
@@ -66,6 +66,7 @@ const Segment = memo(({
   onInvertSelectedSegments,
   onDuplicateSegmentClick,
   getSegEstimatedSize,
+  updateSegAtIndex,
 }: {
   seg: StateSegment | InverseCutSegment,
   index: number,
@@ -98,12 +99,38 @@ const Segment = memo(({
   onInvertSelectedSegments: UseSegments['invertSelectedSegments'],
   onDuplicateSegmentClick: UseSegments['duplicateSegment'],
   getSegEstimatedSize: UseSegments['getSegEstimatedSize'],
+  updateSegAtIndex: UseSegments['updateSegAtIndex'],
 }) => {
   const { invertCutSegments, darkMode } = useUserSettings();
   const { t } = useTranslation();
   const { getSegColor } = useSegColors();
 
   const ref = useRef<HTMLDivElement | null>(null);
+
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [labelValue, setLabelValue] = useState('');
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingLabel) labelInputRef.current?.select();
+  }, [editingLabel]);
+
+  const onLabelDoubleClick = useCallback<MouseEventHandler>((e) => {
+    e.stopPropagation();
+    if (invertCutSegments || !('name' in seg)) return;
+    setLabelValue(seg.name ?? '');
+    setEditingLabel(true);
+  }, [invertCutSegments, seg]);
+
+  const onLabelSave = useCallback(() => {
+    updateSegAtIndex(index, { name: labelValue.trim() });
+    setEditingLabel(false);
+  }, [index, labelValue, updateSegAtIndex]);
+
+  const onLabelKeyDown = useCallback<KeyboardEventHandler<HTMLInputElement>>((e) => {
+    if (e.key === 'Enter') { e.preventDefault(); onLabelSave(); }
+    if (e.key === 'Escape') setEditingLabel(false);
+  }, [onLabelSave]);
 
   const contextMenuTemplate = useMemo<ContextMenuTemplate>(() => {
     if (invertCutSegments) return [];
@@ -262,7 +289,29 @@ const Segment = memo(({
         <span style={{ cursor, fontSize: `${Math.min(1, 26 / timeStr.length) * 0.75}em`, whiteSpace: 'nowrap' }}>{timeStr}</span>
       </div>
 
-      {'name' in seg && seg.name && <span style={{ fontSize: '.75em', color: primaryTextColor, marginRight: '.3em' }}>{seg.name}</span>}
+      {'name' in seg && (
+        editingLabel
+          ? (
+            <input
+              ref={labelInputRef}
+              value={labelValue}
+              onChange={(e) => setLabelValue(e.target.value)}
+              onBlur={onLabelSave}
+              onKeyDown={onLabelKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              style={{ fontSize: '.75em', color: primaryTextColor, background: 'var(--gray-3)', border: '1px solid var(--gray-7)', borderRadius: '.3em', padding: '0 .2em', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
+            />
+          )
+          : (
+            <span
+              style={{ fontSize: '.75em', color: primaryTextColor, marginRight: '.3em' }}
+              onDoubleClick={onLabelDoubleClick}
+              title={invertCutSegments ? undefined : t('Double-click to edit label')}
+            >
+              {seg.name || <span style={{ opacity: 0.3, fontStyle: 'italic' }}>{t('label…')}</span>}
+            </span>
+          )
+      )}
       {Object.entries(tags).map(([name, value]) => (
         <span style={{ fontSize: '.7em', backgroundColor: 'var(--gray-5)', color: 'var(--gray-12)', borderRadius: '.4em', padding: '0 .2em', marginRight: '.1em' }} key={name}>{name}:<b>{value}</b></span>
       ))}
@@ -602,6 +651,7 @@ function SegmentList({
         onInvertSelectedSegments={onInvertSelectedSegments}
         onDuplicateSegmentClick={onDuplicateSegmentClick}
         getSegEstimatedSize={getSegEstimatedSize}
+        updateSegAtIndex={updateSegAtIndex}
       />
     );
   }
