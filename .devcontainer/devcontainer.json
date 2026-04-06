@@ -1,0 +1,55 @@
+{
+  "name": "lossless-cut-lab",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "node",
+
+  // Runtime arguments for Flatpak/Podman compatibility (Bazzite)
+  "runArgs": [
+    "--device=/dev/dri:/dev/dri",
+    "--ipc=host",
+    "--security-opt=label=disable"
+  ],
+
+  // Container environment for X11/Wayland (Flatpak/Bazzite)
+  "containerEnv": {
+    "DISPLAY": ":0",
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus",
+    "WAYLAND_DISPLAY": "wayland-0",
+    "ELECTRON_DISABLE_SANDBOX": "1",
+    "CHOKIDAR_USEPOLLING": "1"
+  },
+
+  // Remote environment variables
+  "remoteEnv": {
+    "DISPLAY": ":0",
+    "XDG_RUNTIME_DIR": "/run/user/1000",
+    "XAUTHORITY": "/tmp/.xauth-vscode"
+  },
+
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind"
+  ],
+
+  // Refresh X11 auth cookie on every container start.
+  // Copies the active xauth cookie to a stable world-readable path,
+  // and chmod 777s the X socket so the 'node' user (container uid-1000)
+  // can connect across the user-namespace boundary used by rootless Podman.
+  "postStartCommand": "sudo sh -c 'f=$(find /run/user/1000/ -maxdepth 1 -name \"xauth_*\" -printf \"%T@ %p\\n\" 2>/dev/null | sort -rn | head -1 | cut -d\" \" -f2-); [ -n \"$f\" ] && cp \"$f\" /tmp/.xauth-vscode && chmod 644 /tmp/.xauth-vscode; chmod 777 /tmp/.X11-unix/X0 2>/dev/null' || true",
+
+  "postCreateCommand": "yarn install",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "sh"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
