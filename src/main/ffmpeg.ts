@@ -111,7 +111,8 @@ function getExecaOptions<T extends ExecaOptions>({ env, cancelSignal, ...rest }:
     env: {
       ...env,
       // https://github.com/mifi/lossless-cut/issues/1143#issuecomment-1500883489
-      ...(isLinux && !isDev && !customFfPath && { LD_LIBRARY_PATH: process.resourcesPath }),
+      // In dev mode the shared libs live next to the binary in ffmpeg/<platform>-<arch>/lib/
+      ...(isLinux && !customFfPath && { LD_LIBRARY_PATH: isDev ? join(app.getAppPath(), 'ffmpeg', `${platform}-${arch}`, 'lib') : process.resourcesPath }),
     },
   };
   return execaOptions as T;

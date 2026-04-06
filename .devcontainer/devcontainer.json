@@ -40,7 +40,7 @@
   // can connect across the user-namespace boundary used by rootless Podman.
   "postStartCommand": "sudo sh -c 'f=$(find /run/user/1000/ -maxdepth 1 -name \"xauth_*\" -printf \"%T@ %p\\n\" 2>/dev/null | sort -rn | head -1 | cut -d\" \" -f2-); [ -n \"$f\" ] && cp \"$f\" /tmp/.xauth-vscode && chmod 644 /tmp/.xauth-vscode; chmod 777 /tmp/.X11-unix/X0 2>/dev/null' || true",
 
-  "postCreateCommand": "yarn install",
+  "postCreateCommand": "yarn install && yarn download-ffmpeg-linux-x64",
   "customizations": {
     "vscode": {
       "settings": {
